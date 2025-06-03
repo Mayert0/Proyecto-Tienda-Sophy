@@ -109,8 +109,11 @@ const Register = () => {
   setError('');
 
   try {
-    // Paso 1: Registrar usuario y obtener credenciales por correo
-    await register({ correoUsuario: formData.correoUsuario });
+    // Paso 1: Registrar usuario
+    const response = await register({ correoUsuario: formData.correoUsuario });
+    
+    // IMPORTANTE: No usar la respuesta directamente en el render
+    console.log('Respuesta del registro:', response);
    
     // Paso 2: Crear perfil de cliente
     const clientData = {
@@ -121,7 +124,8 @@ const Register = () => {
       estado: 1
     };
    
-    await clientService.createClient(clientData);
+    const clientResponse = await clientService.createClient(clientData);
+    console.log('Cliente creado:', clientResponse);
    
     setSuccess(true);
     setActiveStep(2);
@@ -132,11 +136,23 @@ const Register = () => {
           message: 'Registro exitoso. Revisa tu correo para obtener tu contraseña.' 
         } 
       });
-    }, 2000); // Reducir tiempo a 2 segundos
+    }, 3000);
    
   } catch (err) {
     console.error('Error en registro:', err);
-    setError(err.response?.data || 'Error al registrar usuario. Por favor intenta nuevamente.');
+    
+    // CORREGIR: Extraer solo el mensaje de error
+    let errorMessage = 'Error al registrar usuario. Por favor intenta nuevamente.';
+    
+    if (err.response?.data) {
+      if (typeof err.response.data === 'string') {
+        errorMessage = err.response.data;
+      } else if (err.response.data.message) {
+        errorMessage = err.response.data.message;
+      }
+    }
+    
+    setError(errorMessage);
   } finally {
     setLoading(false);
   }
@@ -237,29 +253,29 @@ const Register = () => {
           </Box>
         );
       case 2:
-        return (
-          <Box textAlign="center">
-            <CheckCircle
-              sx={{
-                fontSize: 80,
-                color: 'success.main',
-                mb: 2
-              }}
-            />
-            <Typography variant="h5" gutterBottom>
-              ¡Registro Exitoso!
-            </Typography>
-            <Typography variant="body1" color="text.secondary" paragraph>
-              Tu cuenta ha sido creada exitosamente.
-            </Typography>
-            <Typography variant="body2" color="text.secondary" paragraph>
-              Hemos enviado tu contraseña a: <strong>{formData.correoUsuario}</strong>
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Serás redirigido al login en unos segundos...
-            </Typography>
-          </Box>
-        );
+  return (
+    <Box textAlign="center">
+      <CheckCircle
+        sx={{
+          fontSize: 80,
+          color: 'success.main',
+          mb: 2
+        }}
+      />
+      <Typography variant="h5" gutterBottom>
+        ¡Registro Exitoso!
+      </Typography>
+      <Typography variant="body1" color="text.secondary" paragraph>
+        Tu cuenta ha sido creada exitosamente.
+      </Typography>
+      <Typography variant="body2" color="text.secondary" paragraph>
+        Hemos enviado tu contraseña a: <strong>{formData.correoUsuario}</strong>
+      </Typography>
+      <Typography variant="body2" color="text.secondary">
+        Serás redirigido al login en unos segundos...
+      </Typography>
+    </Box>
+  );
       default:
         return 'Paso desconocido';
     }

@@ -92,7 +92,7 @@ const Footer = () => {
                 Catálogo
               </Link>
               <Link href="/login" color="inherit" underline="hover">
-                Mi Cuenta
+                Aun no tienes Cuenta?
               </Link>
               <Link href="/cart" color="inherit" underline="hover">
                 Carrito

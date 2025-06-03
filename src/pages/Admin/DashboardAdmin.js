@@ -17,7 +17,8 @@ import {
   Inventory,
   ShoppingBag,
   People,
-  AttachMoney
+  AttachMoney,
+  Block 
 } from '@mui/icons-material';
 
 const DashboardAdmin = ({ stats, loading }) => {
@@ -117,6 +118,31 @@ const DashboardAdmin = ({ stats, loading }) => {
         </Grid>
       </Grid>
 
+      {stats.blockedAccounts > 0 && (
+        <Grid container spacing={3} sx={{ mb: 4 }}>
+          <Grid item xs={12}>
+            <Card sx={{ border: '2px solid', borderColor: 'error.main', bgcolor: 'error.light' }}>
+              <CardContent>
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <Block sx={{ fontSize: 40, color: 'error.main', mr: 2 }} />
+                  <Box sx={{ flexGrow: 1 }}>
+                    <Typography variant="h6" color="error.main" gutterBottom>
+                      ⚠️ Atención Requerida
+                    </Typography>
+                    <Typography variant="body1" color="error.dark">
+                      Hay <strong>{stats.blockedAccounts}</strong> cuenta(s) bloqueada(s) que requieren intervención del administrador.
+                    </Typography>
+                    <Typography variant="body2" color="error.dark" sx={{ mt: 1 }}>
+                      Dirígete a la sección "Usuarios" para desbloquear las cuentas afectadas.
+                    </Typography>
+                  </Box>
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+      )}
+
       <Grid container spacing={3}>
         <Grid item xs={12} md={6}>
           <Paper sx={{ p: 2 }}>
@@ -161,6 +187,61 @@ const DashboardAdmin = ({ stats, loading }) => {
                 </ListItem>
               ))}
             </List>
+          </Paper>
+        </Grid>
+      </Grid>
+
+      <Grid container spacing={3} sx={{ mt: 2 }}>
+        <Grid item xs={12}>
+          <Paper sx={{ p: 3, bgcolor: 'grey.50' }}>
+            <Typography variant="h6" gutterBottom>
+              Estado del Sistema
+            </Typography>
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={6} md={3}>
+                <Box sx={{ textAlign: 'center' }}>
+                  <Typography variant="h5" color="primary">
+                    {stats.totalProducts}
+                  </Typography>
+                  <Typography variant="body2" color="textSecondary">
+                    Total Productos
+                  </Typography>
+                </Box>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Box sx={{ textAlign: 'center' }}>
+                  <Typography variant="h5" color="success.main">
+                    {stats.totalCustomers}
+                  </Typography>
+                  <Typography variant="body2" color="textSecondary">
+                    Clientes Registrados
+                  </Typography>
+                </Box>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Box sx={{ textAlign: 'center' }}>
+                  <Typography variant="h5" color="warning.main">
+                    {stats.lowStockProducts?.length || 0}
+                  </Typography>
+                  <Typography variant="body2" color="textSecondary">
+                    Productos Bajo Stock
+                  </Typography>
+                </Box>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Box sx={{ textAlign: 'center' }}>
+                  <Typography 
+                    variant="h5" 
+                    color={stats.blockedAccounts > 0 ? 'error.main' : 'success.main'}
+                  >
+                    {stats.blockedAccounts || 0}
+                  </Typography>
+                  <Typography variant="body2" color="textSecondary">
+                    Cuentas Bloqueadas
+                  </Typography>
+                </Box>
+              </Grid>
+            </Grid>
           </Paper>
         </Grid>
       </Grid>

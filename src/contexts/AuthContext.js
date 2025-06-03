@@ -54,16 +54,22 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const register = async (userData) => {
+ const register = async (userData) => {
   try {
     setLoading(true);
     const response = await authService.registerCliente(userData.correoUsuario);
-    
-    return response; 
+   
+    // IMPORTANTE: Solo retornar datos serializables
+    return {
+      success: true,
+      message: typeof response === 'string' ? response : 'Usuario registrado exitosamente'
+    };
   } catch (error) {
     const errorMessage = error.response?.data || 'Error en el registro';
     toast.error(errorMessage);
-    throw error;
+    
+    // Lanzar solo el mensaje, no el objeto completo
+    throw new Error(errorMessage);
   } finally {
     setLoading(false);
   }

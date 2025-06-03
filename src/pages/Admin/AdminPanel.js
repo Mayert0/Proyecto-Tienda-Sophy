@@ -24,13 +24,14 @@ import {
   Menu as MenuIcon
 } from '@mui/icons-material';
 import { Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
-import { productService, orderService, clientService } from '../../services/api';
+import { productService, orderService, clientService, userService } from '../../services/api';
 import ProductsAdmin from './ProductsAdmin';
 import CustomersAdmin from './CustomersAdmin';
 import OrdersAdmin from './OrdersAdmin';
 import CategoriesAdmin from './CategoriesAdmin';
 import DashboardAdmin from './DashboardAdmin';
-import ReportsAdmin from './ReportsAdmin'; // ✅ IMPORTAR EL NUEVO COMPONENTE
+import ReportsAdmin from './ReportsAdmin'; 
+import UsersAdmin from './UsersAdmin';
 
 const AdminPanel = () => {
   const [stats, setStats] = useState({
@@ -55,39 +56,44 @@ const AdminPanel = () => {
   }, []);
 
   const loadStats = async () => {
-    try {
-      setLoading(true);
-      const [products, orders, customers] = await Promise.all([
-        productService.getAllProducts(),
-        orderService.getAllOrders(),
-        clientService.getAllClients()
-      ]);
+  try {
+    setLoading(true);
+    const [products, orders, customers, users] = await Promise.all([
+      productService.getAllProducts(),
+      orderService.getAllOrders(),
+      clientService.getAllClients(),
+      userService.getAllUsers() 
+    ]);
 
-      const totalRevenue = orders.reduce((sum, order) => sum + order.valorVenta, 0);
-      const lowStockProducts = products.filter(p => p.existencia <= 5);
-      const recentOrders = orders
-        .sort((a, b) => new Date(b.fechaVenta) - new Date(a.fechaVenta))
-        .slice(0, 5);
+    const totalRevenue = orders.reduce((sum, order) => sum + order.valorVenta, 0);
+    const lowStockProducts = products.filter(p => p.existencia <= 5);
+    const recentOrders = orders
+      .sort((a, b) => new Date(b.fechaVenta) - new Date(a.fechaVenta))
+      .slice(0, 5);
 
-      setStats({
-        totalProducts: products.length,
-        totalOrders: orders.length,
-        totalCustomers: customers.length,
-        totalRevenue,
-        recentOrders,
-        lowStockProducts
-      });
-    } catch (error) {
-      console.error('Error al cargar estadísticas:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    const blockedAccounts = users.filter(u => u.intentos >= 3).length;
+
+    setStats({
+      totalProducts: products.length,
+      totalOrders: orders.length,
+      totalCustomers: customers.length,
+      totalRevenue,
+      recentOrders,
+      lowStockProducts,
+      blockedAccounts 
+    });
+  } catch (error) {
+    console.error('Error al cargar estadísticas:', error);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const menuItems = [
     { text: 'Dashboard', icon: <Dashboard />, path: '/admin', exact: true },
     { text: 'Productos', icon: <Inventory />, path: '/admin/products' },
     { text: 'Clientes', icon: <People />, path: '/admin/customers' },
+    { text: 'Usuarios', icon: <AdminPanelSettings />, path: '/admin/users' }, 
     { text: 'Pedidos', icon: <ShoppingCart />, path: '/admin/orders' },
     { text: 'Categorías', icon: <Category />, path: '/admin/categories' },
     { text: 'Reportes', icon: <Assessment />, path: '/admin/reports' },
@@ -193,9 +199,10 @@ const AdminPanel = () => {
           <Route path="/" element={<DashboardAdmin stats={stats} loading={loading} />} />
           <Route path="/products" element={<ProductsAdmin />} />
           <Route path="/customers" element={<CustomersAdmin />} />
+           <Route path="/users" element={<UsersAdmin />} /> 
           <Route path="/orders" element={<OrdersAdmin />} />
           <Route path="/categories" element={<CategoriesAdmin />} />
-          <Route path="/reports" element={<ReportsAdmin />} /> {/* ✅ RUTA CORREGIDA */}
+          <Route path="/reports" element={<ReportsAdmin />} /> 
           <Route path="*" element={<Navigate to="/admin" replace />} />
         </Routes>
       </Box>
