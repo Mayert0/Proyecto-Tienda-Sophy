@@ -22,7 +22,7 @@ import {
   Star
 } from '@mui/icons-material';
 import { Link, useNavigate } from 'react-router-dom';
-import { productService } from '../../services/api';
+import { productService, parameterService } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
 import { toast } from 'react-toastify';
@@ -30,18 +30,31 @@ import { toast } from 'react-toastify';
 const Home = () => {
   const [featuredProducts, setFeaturedProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [maxDailyProducts, setMaxDailyProducts] = useState(3);
+  
   const { user } = useAuth();
-  const { addToCart } = useCart();
+  const { addToCart, getTodayItemsCount } = useCart();
   const navigate = useNavigate();
 
   useEffect(() => {
     loadFeaturedProducts();
+    loadMaxDailyProducts();
   }, []);
+
+  const loadMaxDailyProducts = async () => {
+    try {
+      const limit = await parameterService.getMaxDailyProducts();
+      setMaxDailyProducts(limit);
+    } catch (error) {
+      console.error('Error cargando límite de productos:', error);
+      setMaxDailyProducts(3);
+    }
+  };
 
   const loadFeaturedProducts = async () => {
     try {
       const products = await productService.getAvailableProducts();
-      // Mostrar solo los primeros 6 productos como destacados
+            // Mostrar solo los primeros 6 productos como destacados
       setFeaturedProducts(products.slice(0, 6));
     } catch (error) {
       console.error('Error al cargar productos destacados:', error);
@@ -51,12 +64,19 @@ const Home = () => {
     }
   };
 
-  const handleAddToCart = (product) => {
+  const handleAddToCart = async (product) => {
     if (!user) {
       toast.info('Debes iniciar sesión para agregar productos al carrito');
       navigate('/login');
       return;
     }
+
+    const todayCount = getTodayItemsCount();
+    if (todayCount >= maxDailyProducts) {
+      toast.error(`Solo puedes agregar ${maxDailyProducts} productos por día`);
+      return;
+    }
+
     addToCart(product);
   };
 
@@ -189,7 +209,7 @@ const Home = () => {
                       <Typography gutterBottom variant="h6" component="h3">
                         {product.descripcion}
                       </Typography>
-                      
+                     
                       <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                         <Rating value={4.5} precision={0.5} size="small" readOnly />
                         <Typography variant="body2" color="text.secondary" sx={{ ml: 1 }}>
@@ -210,7 +230,7 @@ const Home = () => {
                         />
                       </Box>
                     </CardContent>
-                    
+                   
                     <CardActions sx={{ p: 2, pt: 0 }}>
                       <Button
                         size="small"

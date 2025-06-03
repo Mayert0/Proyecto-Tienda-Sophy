@@ -1,5 +1,5 @@
-// src/pages/Cart/Cart.js
-import React from 'react';
+// src/pages/Cart/Cart.js - 
+import React, { useState, useEffect } from 'react'; // AGREGAR useState e useEffect
 import {
   Container,
   Typography,
@@ -34,13 +34,26 @@ const Cart = () => {
     updateQuantity,
     clearCart,
     getSubtotal,
-    getTaxAmount,
-    getFinalTotal,
-    getTodayItemsCount
+    getTaxAmountSync,
+    getFinalTotalSync,
+    getTodayItemsCount,
+    getMaxDailyProducts
   } = useCart();
-  
+ 
   const { user } = useAuth();
   const navigate = useNavigate();
+  
+  // CORREGIR: Definir el state correctamente
+  const [maxProducts, setMaxProducts] = useState(3);
+
+  // CORREGIR: Usar useEffect correctamente
+  useEffect(() => {
+    const loadMaxProducts = async () => {
+      const max = getMaxDailyProducts();
+      setMaxProducts(max);
+    };
+    loadMaxProducts();
+  }, [getMaxDailyProducts]);
 
   const handleQuantityChange = (cartItemId, change) => {
     const item = cartItems.find(item => item.cartItemId === cartItemId);
@@ -113,14 +126,10 @@ const Cart = () => {
       </Typography>
 
       {/* Alerta sobre límite diario */}
-      <Alert 
-        severity="info" 
-        sx={{ mb: 3 }}
-        icon={<ShoppingCart />}
-      >
+      <Alert severity="info" sx={{ mb: 3 }} icon={<ShoppingCart />}>
         <Typography variant="body2">
-          <strong>Límite diario:</strong> Tienes {getTodayItemsCount()} de 3 productos permitidos por día.
-          {getTodayItemsCount() >= 3 && ' Has alcanzado el límite diario.'}
+          <strong>Límite diario:</strong> Tienes {getTodayItemsCount()} de {maxProducts} productos permitidos por día.
+          {getTodayItemsCount() >= maxProducts && ' Has alcanzado el límite diario.'}
         </Typography>
       </Alert>
 
@@ -168,7 +177,7 @@ const Cart = () => {
                       <Typography variant="h6" gutterBottom>
                         {item.descripcion}
                       </Typography>
-                      
+                     
                       <Typography variant="body2" color="text.secondary" gutterBottom>
                         Precio unitario: ${Number(item.precioVentaActual).toLocaleString()}
                       </Typography>
@@ -181,11 +190,11 @@ const Cart = () => {
                           variant="outlined"
                         />
                         {item.tieneIva === 1 && (
-                          <Chip 
-                            label="IVA incluido" 
-                            size="small" 
-                            color="info" 
-                            variant="outlined" 
+                          <Chip
+                            label="IVA incluido"
+                            size="small"
+                            color="info"
+                            variant="outlined"
                           />
                         )}
                       </Box>
@@ -248,7 +257,7 @@ const Cart = () => {
             <Typography variant="h6" gutterBottom>
               Resumen del Pedido
             </Typography>
-            
+           
             <Divider sx={{ my: 2 }} />
 
             <Box sx={{ mb: 2 }}>
@@ -266,7 +275,7 @@ const Cart = () => {
                   IVA (19%):
                 </Typography>
                 <Typography variant="body2">
-                  ${getTaxAmount().toLocaleString()}
+                  ${getTaxAmountSync().toLocaleString()}
                 </Typography>
               </Box>
 
@@ -287,7 +296,7 @@ const Cart = () => {
                 Total:
               </Typography>
               <Typography variant="h6" fontWeight="bold" color="primary">
-                ${getFinalTotal().toLocaleString()}
+                ${getFinalTotalSync().toLocaleString()}
               </Typography>
             </Box>
 
@@ -317,7 +326,7 @@ const Cart = () => {
                 <strong>💡 Información importante:</strong>
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                • Máximo 3 productos por día por cliente
+                • Máximo {maxProducts} productos por día por cliente
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 • Envío gratuito en todas las compras

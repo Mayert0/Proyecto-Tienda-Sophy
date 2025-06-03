@@ -1,4 +1,4 @@
-//src/services/api.js 
+// src/services/api.js - ACTUALIZADO CON TODOS LOS SERVICIOS
 import axios from 'axios';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8092';
@@ -17,6 +17,7 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
 
 export const authService = {
   login: async (correo, contraseña) => {
@@ -168,6 +169,7 @@ export const orderService = {
   }
 };
 
+// ✅ SERVICIO DE USUARIOS COMPLETO
 export const userService = {
   getAllUsers: async () => {
     const response = await api.get('/Proyec/usuario/getAll');
@@ -209,6 +211,68 @@ export const emailService = {
   sendEmailWithAttachment: async (emailData) => {
     const response = await api.post('/Proyec/mail/sendMailWithAttachment', emailData);
     return response.data;
+  }
+};
+
+// 🆕 SERVICIO DE PARÁMETROS
+export const parameterService = {
+  getAllParameters: async () => {
+    const response = await api.get('/Proyec/parametro/getAll');
+    return response.data;
+  },
+
+  getParameterById: async (id) => {
+    const response = await api.get(`/Proyec/parametro/findRecord/${id}`);
+    return response.data;
+  },
+
+  createParameter: async (parameterData) => {
+    const response = await api.post('/Proyec/parametro/saveParametro', parameterData);
+    return response.data;
+  },
+
+  updateParameter: async (parameterData) => {
+    const response = await api.post('/Proyec/parametro/updateParametro', parameterData);
+    return response.data;
+  },
+
+  deleteParameter: async (id) => {
+    const response = await api.delete(`/Proyec/parametro/deleteParametro/${id}`);
+    return response.data;
+  },
+
+  // Métodos específicos para obtener parámetros del sistema
+  getMaxDailyProducts: async () => {
+    try {
+      const parameters = await parameterService.getAllParameters();
+      const param = parameters.find(p => p.descripcion.toLowerCase().includes('productos por dia') || p.id === 1);
+      return param ? param.valorNumero : 3; // Valor por defecto
+    } catch (error) {
+      console.error('Error al obtener parámetro de productos por día:', error);
+      return 3;
+    }
+  },
+
+  getMaxLoginAttempts: async () => {
+    try {
+      const parameters = await parameterService.getAllParameters();
+      const param = parameters.find(p => p.descripcion.toLowerCase().includes('intentos fallidos') || p.id === 2);
+      return param ? param.valorNumero : 3; // Valor por defecto
+    } catch (error) {
+      console.error('Error al obtener parámetro de intentos fallidos:', error);
+      return 3;
+    }
+  },
+
+  getIvaRate: async () => {
+    try {
+      const parameters = await parameterService.getAllParameters();
+      const param = parameters.find(p => p.descripcion.toLowerCase().includes('iva') || p.id === 3);
+      return param ? parseFloat(param.valorTexto || param.valorNumero) / 100 : 0.19; // Valor por defecto 19%
+    } catch (error) {
+      console.error('Error al obtener parámetro de IVA:', error);
+      return 0.19;
+    }
   }
 };
 

@@ -1,5 +1,6 @@
-// src/contexts/CartContext.js
+// src/contexts/CartContext.js - 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { parameterService } from '../services/api';
 import { toast } from 'react-toastify';
 
 const CartContext = createContext();
@@ -14,14 +15,39 @@ export const useCart = () => {
 
 export const CartProvider = ({ children }) => {
   const [cartItems, setCartItems] = useState([]);
+  const [maxDailyProducts, setMaxDailyProducts] = useState(3);
+  const [ivaRate, setIvaRate] = useState(0.19);
 
   useEffect(() => {
     loadCartFromStorage();
+    loadMaxDailyProducts();
+    loadIvaRate();
   }, []);
 
   useEffect(() => {
     saveCartToStorage();
   }, [cartItems]);
+
+  // Cargar parámetros del sistema
+  const loadMaxDailyProducts = async () => {
+    try {
+      const limit = await parameterService.getMaxDailyProducts();
+      setMaxDailyProducts(limit);
+    } catch (error) {
+      console.error('Error cargando límite de productos:', error);
+      setMaxDailyProducts(3);
+    }
+  };
+
+  const loadIvaRate = async () => {
+    try {
+      const rate = await parameterService.getIvaRate();
+      setIvaRate(rate);
+    } catch (error) {
+      console.error('Error cargando tasa de IVA:', error);
+      setIvaRate(0.19);
+    }
+  };
 
   const loadCartFromStorage = () => {
     try {
@@ -42,14 +68,18 @@ export const CartProvider = ({ children }) => {
     }
   };
 
-  const addToCart = (product, quantity = 1) => {
-    const today = new Date().toDateString();
-    const todayItems = cartItems.filter(item =>
-      new Date(item.addedDate).toDateString() === today
-    );
+  const addToCart = async (product, quantity = 1) => {
+    // Recargar límite actual
+    await loadMaxDailyProducts();
 
-    if (todayItems.length >= 3) {
-      toast.error('Solo puedes agregar 3 productos por día');
+    const today = new Date().toDateString();
+    const todayProductsCount = cartItems
+      .filter(item => new Date(item.addedDate).toDateString() === today)
+      .reduce((total, item) => total + item.quantity, 0);
+
+    // Verificar si agregar este producto excedería el límite
+    if (todayProductsCount + quantity > maxDailyProducts) {
+      toast.error(`Solo puedes agregar ${maxDailyProducts} productos por día. Ya tienes ${todayProductsCount} productos.`);
       return false;
     }
 
@@ -62,6 +92,14 @@ export const CartProvider = ({ children }) => {
    
     if (existingItem) {
       const newQuantity = existingItem.quantity + quantity;
+     
+      // Verificar límite con la nueva cantidad
+      const newTotalProducts = todayProductsCount - existingItem.quantity + newQuantity;
+      if (newTotalProducts > maxDailyProducts) {
+        toast.error(`Solo puedes tener ${maxDailyProducts} productos por día.`);
+        return false;
+      }
+     
       if (newQuantity > product.existencia) {
         toast.error('No hay suficiente stock disponible');
         return false;
@@ -97,7 +135,7 @@ export const CartProvider = ({ children }) => {
     }
   };
 
-  const updateQuantity = (cartItemId, newQuantity) => {
+  const updateQuantity = async (cartItemId, newQuantity) => {
     if (newQuantity <= 0) {
       removeFromCart(cartItemId);
       return;
@@ -108,6 +146,21 @@ export const CartProvider = ({ children }) => {
 
     if (newQuantity > item.existencia) {
       toast.error('No hay suficiente stock disponible');
+      return;
+    }
+
+    // Verificar límite diario al actualizar cantidad
+    await loadMaxDailyProducts();
+    const today = new Date().toDateString();
+    const todayProductsCount = cartItems
+      .filter(cartItem =>
+        new Date(cartItem.addedDate).toDateString() === today &&
+        cartItem.cartItemId !== cartItemId
+      )
+      .reduce((total, cartItem) => total + cartItem.quantity, 0);
+
+    if (todayProductsCount + newQuantity > maxDailyProducts) {
+      toast.error(`Solo puedes tener ${maxDailyProducts} productos por día.`);
       return;
     }
 
@@ -137,11 +190,11 @@ export const CartProvider = ({ children }) => {
     return cartItems.reduce((total, item) => total + item.quantity, 0);
   };
 
-  const getTaxAmount = () => {
+  const getTaxAmountSync = () => {
     return cartItems.reduce((total, item) => {
       if (item.tieneIva === 1) {
         const subtotal = Number(item.precioVentaActual) * Number(item.quantity);
-        return total + (subtotal * 0.19);
+        return total + (subtotal * ivaRate);
       }
       return total;
     }, 0);
@@ -151,24 +204,18 @@ export const CartProvider = ({ children }) => {
     return getCartTotal();
   };
 
-  const getFinalTotal = () => {
-    return getSubtotal() + getTaxAmount();
-  };
-
-  const canAddMoreItems = () => {
-    const today = new Date().toDateString();
-    const todayItems = cartItems.filter(item =>
-      new Date(item.addedDate).toDateString() === today
-    );
-    return todayItems.length < 3;
+  const getFinalTotalSync = () => {
+    return getSubtotal() + getTaxAmountSync();
   };
 
   const getTodayItemsCount = () => {
     const today = new Date().toDateString();
-    return cartItems.filter(item =>
-      new Date(item.addedDate).toDateString() === today
-    ).length;
+    return cartItems
+      .filter(item => new Date(item.addedDate).toDateString() === today)
+      .reduce((total, item) => total + item.quantity, 0);
   };
+
+  const getMaxDailyProducts = () => maxDailyProducts;
 
   const value = {
     cartItems,
@@ -178,11 +225,13 @@ export const CartProvider = ({ children }) => {
     clearCart,
     getCartTotal,
     getCartItemsCount,
-    getTaxAmount,
+    getTaxAmountSync,
     getSubtotal,
-    getFinalTotal,
-    canAddMoreItems,
-    getTodayItemsCount
+    getFinalTotalSync,
+    getTodayItemsCount,
+    getMaxDailyProducts,
+    maxDailyProducts,
+    ivaRate
   };
 
   return (

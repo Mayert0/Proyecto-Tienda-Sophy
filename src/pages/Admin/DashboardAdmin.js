@@ -1,5 +1,5 @@
-//src/pages/Admin/DashboardAdmin.js 
-import React from 'react';
+//src/pages/Admin/DashboardAdmin.js
+import React, { useEffect, useState } from 'react';
 import {
   Container,
   Typography,
@@ -11,17 +11,48 @@ import {
   List,
   ListItem,
   ListItemText,
-  Chip
+  Chip,
+  Button
 } from '@mui/material';
 import {
   Inventory,
   ShoppingBag,
   People,
   AttachMoney,
-  Block 
+  Block,
+  Settings
 } from '@mui/icons-material';
+import { parameterService } from '../../services/api';
 
 const DashboardAdmin = ({ stats, loading }) => {
+  const [systemParams, setSystemParams] = useState({
+    maxDailyProducts: 3,
+    maxLoginAttempts: 3,
+    ivaRate: 19
+  });
+
+  useEffect(() => {
+    loadSystemParameters();
+  }, []);
+
+  const loadSystemParameters = async () => {
+    try {
+      const [maxProducts, maxAttempts, ivaRate] = await Promise.all([
+        parameterService.getMaxDailyProducts(),
+        parameterService.getMaxLoginAttempts(),
+        parameterService.getIvaRate()
+      ]);
+
+      setSystemParams({
+        maxDailyProducts: maxProducts,
+        maxLoginAttempts: maxAttempts,
+        ivaRate: (ivaRate * 100).toFixed(0) // Convertir a porcentaje
+      });
+    } catch (error) {
+      console.error('Error cargando parámetros del sistema:', error);
+    }
+  };
+
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('es-CO', {
       style: 'currency',
@@ -143,6 +174,61 @@ const DashboardAdmin = ({ stats, loading }) => {
         </Grid>
       )}
 
+      {/* NUEVA SECCIÓN: Configuración del Sistema */}
+      <Grid container spacing={3} sx={{ mb: 4 }}>
+        <Grid item xs={12}>
+          <Paper sx={{ p: 3, bgcolor: 'info.light', color: 'info.contrastText' }}>
+            <Typography variant="h6" gutterBottom>
+              ⚙️ Configuración del Sistema
+            </Typography>
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={6} md={3}>
+                <Box sx={{ textAlign: 'center' }}>
+                  <Typography variant="h5" color="primary">
+                    {systemParams.maxDailyProducts}
+                  </Typography>
+                  <Typography variant="body2" color="textSecondary">
+                    Productos por Día
+                  </Typography>
+                </Box>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Box sx={{ textAlign: 'center' }}>
+                  <Typography variant="h5" color="warning.main">
+                    {systemParams.maxLoginAttempts}
+                  </Typography>
+                  <Typography variant="body2" color="textSecondary">
+                    Máx. Intentos Login
+                  </Typography>
+                </Box>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Box sx={{ textAlign: 'center' }}>
+                  <Typography variant="h5" color="success.main">
+                    {systemParams.ivaRate}%
+                  </Typography>
+                  <Typography variant="body2" color="textSecondary">
+                    Tasa de IVA
+                  </Typography>
+                </Box>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Box sx={{ textAlign: 'center' }}>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    href="/admin/parameters"
+                    startIcon={<Settings />}
+                  >
+                    Configurar
+                  </Button>
+                </Box>
+              </Grid>
+            </Grid>
+          </Paper>
+        </Grid>
+      </Grid>
+
       <Grid container spacing={3}>
         <Grid item xs={12} md={6}>
           <Paper sx={{ p: 2 }}>
@@ -230,8 +316,8 @@ const DashboardAdmin = ({ stats, loading }) => {
               </Grid>
               <Grid item xs={12} sm={6} md={3}>
                 <Box sx={{ textAlign: 'center' }}>
-                  <Typography 
-                    variant="h5" 
+                  <Typography
+                    variant="h5"
                     color={stats.blockedAccounts > 0 ? 'error.main' : 'success.main'}
                   >
                     {stats.blockedAccounts || 0}

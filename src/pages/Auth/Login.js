@@ -1,5 +1,5 @@
 // src/pages/Auth/Login.js
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Container,
   Paper,
@@ -22,6 +22,7 @@ import {
 } from '@mui/icons-material';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { parameterService } from '../../services/api';
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -31,12 +32,28 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [maxLoginAttempts, setMaxLoginAttempts] = useState(3); // 🆕 Estado para límite dinámico
 
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
   const from = location.state?.from?.pathname || '/catalog';
+
+  // 🆕 NUEVO: Cargar parámetros del sistema
+  useEffect(() => {
+    loadSystemParameters();
+  }, []);
+
+  const loadSystemParameters = async () => {
+    try {
+      const maxAttempts = await parameterService.getMaxLoginAttempts();
+      setMaxLoginAttempts(maxAttempts);
+    } catch (error) {
+      console.error('Error cargando parámetros:', error);
+      setMaxLoginAttempts(3); // Valor por defecto
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -105,7 +122,7 @@ const Login = () => {
           <Typography component="h2" variant="h5" gutterBottom>
             Iniciar Sesión
           </Typography>
-          
+         
           <Typography variant="body2" color="text.secondary" textAlign="center" sx={{ mb: 3 }}>
             Ingresa tus credenciales para acceder a tu cuenta
           </Typography>
@@ -137,7 +154,7 @@ const Login = () => {
               }}
               sx={{ mb: 2 }}
             />
-            
+           
             <TextField
               margin="normal"
               required
@@ -211,7 +228,7 @@ const Login = () => {
           </Box>
         </Paper>
 
-        {/* Demo credentials info */}
+        {/* 🆕 ACTUALIZADO: Info section con límite dinámico */}
         <Paper
           elevation={2}
           sx={{
@@ -232,7 +249,10 @@ const Login = () => {
             • El sistema genera contraseñas seguras de 6-8 caracteres
           </Typography>
           <Typography variant="body2">
-            • Máximo 3 intentos de login antes del bloqueo
+            • Máximo {maxLoginAttempts} intentos de login antes del bloqueo
+          </Typography>
+          <Typography variant="body2">
+            • Límite configurable desde el panel de administración
           </Typography>
         </Paper>
       </Box>

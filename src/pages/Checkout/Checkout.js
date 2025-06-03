@@ -37,7 +37,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../../contexts/CartContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { orderService, clientService } from '../../services/api';
+import { orderService, clientService, parameterService } from '../../services/api';
 import { toast } from 'react-toastify';
 
 const Checkout = () => {
@@ -54,8 +54,9 @@ const Checkout = () => {
   const [clientData, setClientData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [ivaRate, setIvaRate] = useState(0.19);
 
-  const { cartItems, clearCart, getFinalTotal, getTaxAmount, getSubtotal } = useCart();
+  const { cartItems, clearCart, getSubtotal } = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -73,11 +74,21 @@ const Checkout = () => {
     }
 
     loadClientData();
+    loadIvaRate();
   }, [user, cartItems.length, navigate]);
+
+  const loadIvaRate = async () => {
+    try {
+      const rate = await parameterService.getIvaRate();
+      setIvaRate(rate);
+    } catch (error) {
+      console.error('Error cargando tasa de IVA:', error);
+      setIvaRate(0.19);
+    }
+  };
 
   const loadClientData = async () => {
     try {
-      // Buscar el cliente por correo electrónico
       const clients = await clientService.getAllClients();
       const client = clients.find(c => c.correoCliente === user.correoUsuario);
       setClientData(client);
@@ -107,18 +118,17 @@ const Checkout = () => {
 
   const validatePaymentDetails = () => {
     if (paymentMethod === 'tarjeta') {
-      if (!paymentDetails.cardNumber || !paymentDetails.cardName || 
+      if (!paymentDetails.cardNumber || !paymentDetails.cardName ||
           !paymentDetails.expiryDate || !paymentDetails.cvv) {
         setError('Por favor completa todos los campos de la tarjeta');
         return false;
       }
-      
-      // Validación básica de tarjeta
+     
       if (paymentDetails.cardNumber.replace(/\s/g, '').length < 16) {
         setError('Número de tarjeta inválido');
         return false;
       }
-      
+     
       if (paymentDetails.cvv.length < 3) {
         setError('CVV inválido');
         return false;
@@ -129,9 +139,23 @@ const Checkout = () => {
         return false;
       }
     }
-    
+   
     setError('');
     return true;
+  };
+
+  const calculateTax = () => {
+    return cartItems.reduce((total, item) => {
+      if (item.tieneIva === 1) {
+        const subtotal = Number(item.precioVentaActual) * item.quantity;
+        return total + (subtotal * ivaRate);
+      }
+      return total;
+    }, 0);
+  };
+
+  const getFinalTotal = () => {
+    return getSubtotal() + calculateTax();
   };
 
   const handleSubmit = async () => {
@@ -141,7 +165,6 @@ const Checkout = () => {
     setError('');
 
     try {
-      // Preparar datos del pedido
       const orderData = {
         clienteId: clientData?.id || user.id,
         productos: cartItems.map(item => ({
@@ -152,18 +175,11 @@ const Checkout = () => {
         metodoPago: paymentMethod === 'tarjeta' ? 'Tarjeta de Crédito' : 'PSE'
       };
 
-      // Crear el pedido
       await orderService.createOrder(orderData);
-
-      // Limpiar carrito
       clearCart();
-
-      // Avanzar al paso de confirmación
       setActiveStep(2);
-
       toast.success('¡Pedido realizado exitosamente!');
 
-      // Redirigir después de 3 segundos
       setTimeout(() => {
         navigate('/orders');
       }, 3000);
@@ -182,7 +198,6 @@ const Checkout = () => {
       case 0:
         return (
           <Grid container spacing={3}>
-            {/* Resumen de productos */}
             <Grid item xs={12} md={8}>
               <Card>
                 <CardContent>
@@ -227,7 +242,6 @@ const Checkout = () => {
               </Card>
             </Grid>
 
-            {/* Información de envío */}
             <Grid item xs={12} md={4}>
               <Card>
                 <CardContent>
@@ -254,16 +268,16 @@ const Checkout = () => {
                       Cargando información...
                     </Typography>
                   )}
-                  
+                 
                   <Divider sx={{ my: 2 }} />
-                  
+                 
                   <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                     <LocalShipping sx={{ mr: 1, color: 'success.main' }} />
                     <Typography variant="body2" color="success.main">
                       Envío gratuito
                     </Typography>
                   </Box>
-                  
+                 
                   <Typography variant="body2" color="text.secondary">
                     Entrega estimada: 2-3 días hábiles
                   </Typography>
@@ -280,7 +294,7 @@ const Checkout = () => {
               <Typography variant="h6" gutterBottom>
                 Selecciona tu método de pago
               </Typography>
-              
+             
               <RadioGroup
                 value={paymentMethod}
                 onChange={(e) => setPaymentMethod(e.target.value)}
@@ -424,7 +438,7 @@ const Checkout = () => {
   };
 
   if (!user || cartItems.length === 0) {
-    return null; // Los useEffect manejan la redirección
+    return null;
   }
 
   return (
@@ -458,7 +472,7 @@ const Checkout = () => {
               <Typography variant="h6" gutterBottom>
                 Resumen del Pedido
               </Typography>
-              
+             
               <Divider sx={{ my: 2 }} />
 
               <Box sx={{ mb: 2 }}>
@@ -473,10 +487,10 @@ const Checkout = () => {
 
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                   <Typography variant="body2">
-                    IVA (19%):
+                    IVA ({(ivaRate * 100).toFixed(0)}%):
                   </Typography>
                   <Typography variant="body2">
-                    ${getTaxAmount().toLocaleString()}
+                    ${calculateTax().toLocaleString()}
                   </Typography>
                 </Box>
 
@@ -505,7 +519,6 @@ const Checkout = () => {
         )}
       </Grid>
 
-      {/* Botones de navegación */}
       {activeStep < 2 && (
         <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4 }}>
           <Button
@@ -514,7 +527,7 @@ const Checkout = () => {
           >
             Atrás
           </Button>
-          
+         
           <Button
             variant="contained"
             onClick={activeStep === steps.length - 2 ? handleSubmit : handleNext}

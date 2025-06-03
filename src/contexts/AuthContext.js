@@ -1,6 +1,6 @@
 // src/contexts/AuthContext.js
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { authService } from '../services/api';
+import { authService, parameterService } from '../services/api';
 import { toast } from 'react-toastify';
 
 const AuthContext = createContext();
@@ -38,15 +38,24 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     try {
       setLoading(true);
+      
+      // Obtener límite de intentos dinámico
+      const maxAttempts = await parameterService.getMaxLoginAttempts();
+      
       const userData = await authService.login(email, password);
-     
+      
+      // Verificar si la cuenta está bloqueada
+      if (userData.intentos >= maxAttempts) {
+        throw new Error(`Cuenta bloqueada por múltiples intentos fallidos (máximo ${maxAttempts})`);
+      }
+      
       setUser(userData);
       localStorage.setItem('user', JSON.stringify(userData));
-     
+      
       toast.success('¡Bienvenido! Inicio de sesión exitoso');
       return userData;
     } catch (error) {
-      const errorMessage = error.response?.data || 'Error al iniciar sesión';
+      const errorMessage = error.response?.data || error.message || 'Error al iniciar sesión';
       toast.error(errorMessage);
       throw error;
     } finally {
@@ -54,26 +63,19 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
- const register = async (userData) => {
-  try {
-    setLoading(true);
-    const response = await authService.registerCliente(userData.correoUsuario);
-   
-    // IMPORTANTE: Solo retornar datos serializables
-    return {
-      success: true,
-      message: typeof response === 'string' ? response : 'Usuario registrado exitosamente'
-    };
-  } catch (error) {
-    const errorMessage = error.response?.data || 'Error en el registro';
-    toast.error(errorMessage);
-    
-    // Lanzar solo el mensaje, no el objeto completo
-    throw new Error(errorMessage);
-  } finally {
-    setLoading(false);
-  }
-};
+  const register = async (userData) => {
+    try {
+      setLoading(true);
+      const response = await authService.registerCliente(userData.correoUsuario);
+      return response;
+    } catch (error) {
+      const errorMessage = error.response?.data || 'Error en el registro';
+      toast.error(errorMessage);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const logout = () => {
     setUser(null);
